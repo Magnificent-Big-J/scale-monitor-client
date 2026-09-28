@@ -1,0 +1,42 @@
+{
+    "name": "rainwaves/scale-monitor-client",
+    "description": "Laravel client for Code Scale Tech's Scale Monitor: signed heartbeat/error/failed-job/deployment/metric/custom-event telemetry, a deep-health endpoint with pluggable checks, and an exception-handler hook. Fails open by design.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Rainwaves\\ScaleMonitorClient\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Rainwaves\\ScaleMonitorClient\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Code Scale Tech"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.3|^8.4|^8.5",
+        "illuminate/support": "^12.0|^13.0",
+        "illuminate/http": "^12.0|^13.0",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/queue": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0 || ^11.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Rainwaves\\ScaleMonitorClient\\ScaleMonitorServiceProvider"
+            ],
+            "config": [
+                "scale-monitor.php"
+            ]
+        }
+    }
+}
