@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.0 — 2026-09-28
+
+Added `HealthCheckRegistry::registerCheckGroup()` — found while switching SHC over from its own
+hand-written implementation to this package: SHC's deep-health payload comes from one existing
+scheduled command's cached results, a variable, not-known-ahead-of-time number of checks from one
+source. `registerCheck()` can't express that (one key maps to exactly one result, always). A
+group's runner returns `list<CheckResult>`; each one still appears individually in the payload,
+exactly as if registered on its own, and a broken group reports one critical entry instead of
+crashing the whole response (same safety net `registerCheck()`'s closures already had).
+
 ## v1.0.0 — 2026-09-28
 
 Initial release. Extracted from Smart Helpers Center's own hand-written Scale Monitor integration

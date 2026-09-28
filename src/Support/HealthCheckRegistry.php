@@ -18,6 +18,9 @@ class HealthCheckRegistry
     /** @var array<string, HealthCheck> */
     private array $checks = [];
 
+    /** @var array<string, Closure(): list<CheckResult>> */
+    private array $groups = [];
+
     public function registerCheck(HealthCheck|string $check, ?Closure $runner = null): void
     {
         if ($check instanceof HealthCheck) {
@@ -45,10 +48,26 @@ class HealthCheckRegistry
         };
     }
 
+    /**
+     * For a source that produces a variable, not-known-ahead-of-time number
+     * of checks from one place (e.g. an existing scheduled health-check
+     * command's own cached results) — a plain `registerCheck()` can't
+     * express this, since it always maps exactly one key to exactly one
+     * result. $runner returns as many CheckResults as it likes; each one's
+     * own `key` still ends up in the payload individually, exactly as if it
+     * had been registered on its own.
+     *
+     * @param  Closure(): list<CheckResult>  $runner
+     */
+    public function registerCheckGroup(string $groupKey, Closure $runner): void
+    {
+        $this->groups[$groupKey] = $runner;
+    }
+
     /** @return list<CheckResult> */
     public function runAll(): array
     {
-        return array_map(function (HealthCheck $check) {
+        $results = array_map(function (HealthCheck $check) {
             try {
                 return $check->run();
             } catch (Throwable $e) {
@@ -57,5 +76,15 @@ class HealthCheckRegistry
                 return CheckResult::critical($check->key(), 'Health check threw: '.$e->getMessage());
             }
         }, array_values($this->checks));
+
+        foreach ($this->groups as $groupKey => $runner) {
+            try {
+                array_push($results, ...$runner());
+            } catch (Throwable $e) {
+                $results[] = CheckResult::critical($groupKey, 'Health check group threw: '.$e->getMessage());
+            }
+        }
+
+        return $results;
     }
 }
