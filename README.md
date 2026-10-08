@@ -134,3 +134,12 @@ vendor/bin/phpunit
   exception-handler hook are registered explicitly by the host app, not silently wired up — this
   mirrors a real, previously-found gap: Laravel's own event auto-discovery only scans an app's own
   listener directories, never a package's.
+
+### Queue delays and recovery
+
+Version 1.1.1 captures each event’s UTC occurrence time before it enters the queue.
+A queued heartbeat describes when the scheduler ran; delivering it later does not
+provide fresh evidence of health. Old serialized jobs use the queue envelope’s
+`createdAt` where available. The failed-job listener ignores this package’s transport
+jobs to avoid recursive reporting. Ensure a worker consumes `SCALE_MONITOR_QUEUE`
+and point deployment scheduler and worker commands at the stable `current` path.

@@ -3,6 +3,7 @@
 namespace Rainwaves\ScaleMonitorClient\Listeners;
 
 use Illuminate\Queue\Events\JobFailed;
+use Rainwaves\ScaleMonitorClient\Jobs\PushScaleMonitorTelemetry;
 use Rainwaves\ScaleMonitorClient\ScaleMonitor;
 use Throwable;
 
@@ -24,8 +25,13 @@ class ReportFailedJobToScaleMonitor
     public function handle(JobFailed $event): void
     {
         try {
+            $jobName = $event->job->resolveName();
+            if (is_a($jobName, PushScaleMonitorTelemetry::class, true)) {
+                return;
+            }
+
             $this->scaleMonitor->failedJob(
-                job: $event->job->resolveName(),
+                job: $jobName,
                 queue: $event->job->getQueue(),
                 connection: $event->connectionName,
                 exceptionClass: get_class($event->exception),

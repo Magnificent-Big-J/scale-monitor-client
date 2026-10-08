@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -36,6 +37,10 @@ class PushScaleMonitorTelemetry implements ShouldQueue
         private readonly string $endpoint,
         private array $payload,
     ) {
+        // Capture the occurrence before queueing. A delayed worker must not
+        // turn yesterday's scheduler heartbeat into evidence of health now.
+        $this->payload['event_id'] ??= (string) Str::uuid();
+        $this->payload['occurred_at'] ??= now()->utc()->toIso8601String();
         $this->onQueue(config('scale-monitor.queue', 'default'));
     }
 
@@ -50,7 +55,12 @@ class PushScaleMonitorTelemetry implements ShouldQueue
         }
 
         $this->payload['event_id'] ??= (string) Str::uuid();
-        $this->payload['occurred_at'] ??= now()->toIso8601String();
+        // Older serialized jobs did not capture occurrence time. Laravel's
+        // queue envelope supplies creation time where that driver supports it.
+        $queuedAt = $this->job?->payload()['createdAt'] ?? null;
+        $this->payload['occurred_at'] ??= is_numeric($queuedAt)
+            ? Carbon::createFromTimestampUTC((int) $queuedAt)->toIso8601String()
+            : now()->utc()->toIso8601String();
 
         if (($release = env('APP_RELEASE')) && ! isset($this->payload['release'])) {
             $this->payload['release'] = $release;

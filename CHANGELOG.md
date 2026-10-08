@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.1 — 2026-10-08
+
+- Capture UTC occurrence time and event ID before queueing, preserving both through serialization and retries. Delayed heartbeats now retain their original time.
+- Use the queue envelope creation time for older serialized jobs when available.
+- Ignore failed Scale Monitor transport jobs in the failed-job listener to prevent recursive telemetry. Business job failures continue to report.
+- Verified with 45 tests and 76 assertions.
+
 ## v1.1.0 — 2026-09-28
 
 Added `HealthCheckRegistry::registerCheckGroup()` — found while switching SHC over from its own
