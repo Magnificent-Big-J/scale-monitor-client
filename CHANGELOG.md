@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.0 — 2026-10-08
+
+- Attach bounded, read-only runtime evidence to scheduler heartbeats: client/PHP/framework versions, release SHA when available, telemetry queue backlog and Horizon status.
+- Distinguish Horizon's reported worker count from actual worker children observed in the application process directory. Unverifiable counts stay unknown.
+- Never report credentials, host paths, process arguments or user data. Collection failures preserve heartbeat delivery; existing large metadata is retained without exceeding the receiver's limit.
+- Optional `SCALE_MONITOR_RUNTIME_METADATA=false` keeps the original metadata behavior. No new schedules or business jobs are installed.
+
 ## v1.1.2 — 2026-10-08
 
 - Send metric samples with their original observation time and preserve zero values.

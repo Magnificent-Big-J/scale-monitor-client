@@ -51,6 +51,9 @@ return [
 
     'queue' => env('SCALE_MONITOR_QUEUE', 'default'),
 
+    // Read-only runtime/queue evidence accompanies scheduler heartbeats.
+    'runtime_metadata' => (bool) env('SCALE_MONITOR_RUNTIME_METADATA', true),
+
     // Keys stripped (case-insensitively, at any depth) from every outbound
     // context/message payload before it ever leaves this app — a defence-in-
     // depth backstop, not a replacement for not passing secrets in the first

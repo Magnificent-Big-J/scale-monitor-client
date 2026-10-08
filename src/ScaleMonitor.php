@@ -5,6 +5,7 @@ namespace Rainwaves\ScaleMonitorClient;
 use Illuminate\Support\Facades\Log;
 use Rainwaves\ScaleMonitorClient\Jobs\PushScaleMonitorTelemetry;
 use Rainwaves\ScaleMonitorClient\Support\Redactor;
+use Rainwaves\ScaleMonitorClient\Support\RuntimeSnapshot;
 use Throwable;
 
 /**
@@ -23,6 +24,19 @@ class ScaleMonitor
 {
     public function heartbeat(string $key, array $meta = []): void
     {
+        if (! config('scale-monitor.enabled')) {
+            return;
+        }
+        if ($key === 'scheduler' && config('scale-monitor.runtime_metadata', true)) {
+            try {
+                $candidate = [...$meta, 'runtime' => app(RuntimeSnapshot::class)->collect()];
+                if (strlen(json_encode($candidate) ?: '') <= 1024) {
+                    $meta = $candidate;
+                }
+            } catch (Throwable) {
+                // Failure to collect diagnostics must not prevent a heartbeat.
+            }
+        }
         $this->push('heartbeat', array_filter([
             'key' => $key,
             'meta' => $meta !== [] ? $this->redact($meta) : null,

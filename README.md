@@ -149,3 +149,11 @@ values of zero are retained, and default observation time is captured before
 queueing. Configure metric keys and thresholds in Scale Monitor; unknown/disabled
 keys are acknowledged and dropped by the server. Legacy `low` severity maps to
 `info`. `event()` accepts an optional `message` after its existing arguments.
+
+Version 1.2.0 adds a read-only `runtime` snapshot to `scheduler` heartbeat metadata.
+It reports software versions, a deployment SHA when the release folder identifies
+it, the configured telemetry queue’s backlog, and Horizon’s reported/observed
+worker counts. It neither consumes jobs nor starts a scheduler. Counts that cannot
+be verified stay unknown. Set `SCALE_MONITOR_RUNTIME_METADATA=false` to disable it;
+if adding the snapshot would exceed the 1 KB heartbeat limit, existing metadata is
+preserved and the optional snapshot is omitted.
