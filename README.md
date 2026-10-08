@@ -143,3 +143,9 @@ provide fresh evidence of health. Old serialized jobs use the queue envelope’s
 `createdAt` where available. The failed-job listener ignores this package’s transport
 jobs to avoid recursive reporting. Ensure a worker consumes `SCALE_MONITOR_QUEUE`
 and point deployment scheduler and worker commands at the stable `current` path.
+
+Version 1.1.2 aligns metric/custom-event wire payloads with the receiver. Metric
+values of zero are retained, and default observation time is captured before
+queueing. Configure metric keys and thresholds in Scale Monitor; unknown/disabled
+keys are acknowledged and dropped by the server. Legacy `low` severity maps to
+`info`. `event()` accepts an optional `message` after its existing arguments.

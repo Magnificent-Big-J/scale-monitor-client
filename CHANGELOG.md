@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.2 — 2026-10-08
+
+- Send metric samples with their original observation time and preserve zero values.
+- Send custom-event kind/title/message fields required by the server; existing event calls remain supported, with an optional message argument.
+- Map legacy low severity to the server's info severity, and preserve string-zero messages/codes.
+- Configure metric thresholds in Scale Monitor; client-supplied threshold fields do not create or alter server definitions.
+
 ## v1.1.1 — 2026-10-08
 
 - Capture UTC occurrence time and event ID before queueing, preserving both through serialization and retries. Delayed heartbeats now retain their original time.

@@ -26,18 +26,18 @@ class ScaleMonitor
         $this->push('heartbeat', array_filter([
             'key' => $key,
             'meta' => $meta !== [] ? $this->redact($meta) : null,
-        ]));
+        ], static fn ($value) => $value !== null));
     }
 
     public function error(string $severity, string $exceptionClass, string $message, ?string $errorCode = null, array $context = []): void
     {
         $this->push('error', array_filter([
-            'severity' => $severity,
+            'severity' => $severity === 'low' ? 'info' : $severity,
             'exception_class' => $exceptionClass,
             'message' => mb_substr($message, 0, 2000),
             'error_code' => $errorCode,
             'context' => $context !== [] ? $this->redact($context) : null,
-        ]));
+        ], static fn ($value) => $value !== null));
     }
 
     public function failedJob(string $job, ?string $queue, ?string $connection, string $exceptionClass, string $message, int $attempts): void
@@ -50,18 +50,20 @@ class ScaleMonitor
             'message' => mb_substr($message, 0, 2000),
             'attempts' => $attempts,
             'failed_at' => now()->toIso8601String(),
-        ]));
+        ], static fn ($value) => $value !== null));
     }
 
     /**
-     * @param  array<string, mixed>  $value  {value, warning_min?, warning_max?, critical_min?, critical_max?} — only `value` is required, the rest let Scale Monitor evaluate a threshold breach without a separately-configured MetricDefinition first existing for a brand-new key.
+     * @param  array<string, mixed>  $value  {value, observed_at?, tags?}; configure thresholds in Scale Monitor's metric definitions.
      */
     public function metric(string $key, array $value): void
     {
-        $this->push('metric', array_filter([
+        $this->push('metric', ['samples' => [array_filter([
             'key' => $key,
-            ...$value,
-        ]));
+            'value' => $value['value'] ?? null,
+            'observed_at' => $value['observed_at'] ?? now()->utc()->toIso8601String(),
+            'tags' => isset($value['tags']) && is_array($value['tags']) ? $this->redact($value['tags']) : null,
+        ], static fn ($value) => $value !== null)]]);
     }
 
     /**
@@ -71,14 +73,16 @@ class ScaleMonitor
      * per-call-random one) — an event with no fingerprint is recorded but
      * can never open an incident on its own, by design.
      */
-    public function event(string $name, string $severity = 'info', array $context = [], ?string $fingerprint = null): void
+    public function event(string $name, string $severity = 'info', array $context = [], ?string $fingerprint = null, ?string $message = null): void
     {
         $this->push('custom-event', array_filter([
-            'name' => $name,
-            'severity' => $severity,
+            'kind' => mb_substr($name, 0, 64),
+            'title' => mb_substr($name, 0, 191),
+            'message' => mb_substr($message ?? $name, 0, 2000),
+            'severity' => $severity === 'low' ? 'info' : $severity,
             'context' => $context !== [] ? $this->redact($context) : null,
             'fingerprint' => $fingerprint,
-        ]));
+        ], static fn ($value) => $value !== null));
     }
 
     /**
@@ -102,7 +106,7 @@ class ScaleMonitor
                 'status' => $status,
                 'deployed_by' => $deployedBy,
                 'notes' => $notes,
-            ]));
+            ], static fn ($value) => $value !== null));
         } catch (Throwable $e) {
             Log::debug('Unable to send Scale Monitor deployment marker', ['error' => $e->getMessage()]);
         }
