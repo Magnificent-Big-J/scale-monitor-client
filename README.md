@@ -90,7 +90,7 @@ php artisan scale-monitor:ping
 
 ```php
 // routes/api.php
-Route::get('/api/monitoring/v1/health', \Rainwaves\ScaleMonitorClient\Http\Controllers\HealthController::class)
+Route::get('/monitoring/v1/health', \Rainwaves\ScaleMonitorClient\Http\Controllers\HealthController::class)
     ->middleware('scale-monitor.signature');
 ```
 
@@ -157,3 +157,9 @@ worker counts. It neither consumes jobs nor starts a scheduler. Counts that cann
 be verified stay unknown. Set `SCALE_MONITOR_RUNTIME_METADATA=false` to disable it;
 if adding the snapshot would exceed the 1 KB heartbeat limit, existing metadata is
 preserved and the optional snapshot is omitted.
+
+Version 1.2.1 corrects scheduler freshness calculations for signed Carbon date
+differences. Old heartbeat evidence becomes critical; malformed or excessively
+future timestamps report degraded, and missing evidence stays skipped. PHP and
+Laravel support requirements are unchanged. The route above belongs in Laravel's
+`routes/api.php`, which already adds the `/api` prefix.

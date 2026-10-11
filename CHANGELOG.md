@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.1 — 2026-10-11
+
+- Correct scheduler heartbeat age when Carbon returns signed date differences: stale evidence now reports critical instead of a negative healthy age.
+- Treat malformed or excessively future heartbeat timestamps as unverified/degraded; missing evidence remains skipped.
+- Correct the Laravel API route example to account for its existing `/api` prefix.
+- PHP/Laravel compatibility requirements and the telemetry contract are unchanged.
+
 ## v1.2.0 — 2026-10-08
 
 - Attach bounded, read-only runtime evidence to scheduler heartbeats: client/PHP/framework versions, release SHA when available, telemetry queue backlog and Horizon status.
