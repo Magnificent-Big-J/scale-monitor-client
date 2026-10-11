@@ -2,9 +2,11 @@
 
 namespace Rainwaves\ScaleMonitorClient\HealthChecks;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Rainwaves\ScaleMonitorClient\Contracts\HealthCheck;
 use Rainwaves\ScaleMonitorClient\Support\CheckResult;
+use Throwable;
 
 /**
  * This package doesn't own the host app's own schedule, so it can't tell on
@@ -34,7 +36,16 @@ class SchedulerHealthCheck implements HealthCheck
             return CheckResult::skipped($this->key(), 'No scheduler heartbeat wired up — see this check\'s own docblock.');
         }
 
-        $ageSeconds = now()->diffInSeconds($lastBeat);
+        try {
+            $heartbeatAt = Carbon::parse($lastBeat)->utc();
+        } catch (Throwable) {
+            return CheckResult::degraded($this->key(), 'Scheduler heartbeat time is invalid; freshness is unverified.');
+        }
+
+        if ($heartbeatAt->gt(now()->utc()->addMinutes(5))) {
+            return CheckResult::degraded($this->key(), 'Scheduler heartbeat is in the future; freshness is unverified.');
+        }
+        $ageSeconds = max(0, (int) $heartbeatAt->diffInSeconds(now()->utc()));
 
         if ($ageSeconds > self::STALE_AFTER_SECONDS) {
             return CheckResult::critical($this->key(), "Scheduler heartbeat is {$ageSeconds}s old (expected < ".self::STALE_AFTER_SECONDS.'s).', errorCode: 'SCHEDULER_STALE');
