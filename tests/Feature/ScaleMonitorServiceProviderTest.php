@@ -44,4 +44,10 @@ class ScaleMonitorServiceProviderTest extends TestCase
             $this->assertContains($expected, $keys);
         }
     }
+
+    public function test_shadow_mode_does_not_install_a_local_schedule(): void
+    {
+        $events = collect($this->app->make(\Illuminate\Console\Scheduling\Schedule::class)->events());
+        $this->assertCount(0, $events->where('description', 'scale-monitor:measure-scheduler'));
+    }
 }

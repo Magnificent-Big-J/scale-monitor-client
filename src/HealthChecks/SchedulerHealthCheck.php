@@ -6,17 +6,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Rainwaves\ScaleMonitorClient\Contracts\HealthCheck;
 use Rainwaves\ScaleMonitorClient\Support\CheckResult;
+use Rainwaves\ScaleMonitorClient\Support\SchedulerMeasurement;
 use Throwable;
 
-/**
- * This package doesn't own the host app's own schedule, so it can't tell on
- * its own whether `schedule:run` is actually firing every minute (e.g. a
- * dead cron entry). It reports against a cache key the host app is expected
- * to touch itself once a minute — e.g.
- * `Schedule::call(fn () => Cache::put('scale-monitor:scheduler:heartbeat',
- * now(), 300))->everyMinute()` in routes/console.php. If that key was never
- * wired up at all, this reports `skipped` rather than a false alarm.
- */
+/** Local schedule execution; received telemetry is a separate measurement. */
 class SchedulerHealthCheck implements HealthCheck
 {
     private const string CACHE_KEY = 'scale-monitor:scheduler:heartbeat';
@@ -30,19 +23,26 @@ class SchedulerHealthCheck implements HealthCheck
 
     public function run(): CheckResult
     {
-        $lastBeat = Cache::get(self::CACHE_KEY);
+        try {
+            $lastBeat = Cache::get(SchedulerMeasurement::CACHE_KEY) ?? Cache::get(self::CACHE_KEY);
+        } catch (Throwable) {
+            return CheckResult::critical($this->key(), 'Scheduler measurement cache unavailable.', errorCode: 'SCHEDULER_CACHE_UNAVAILABLE');
+        }
 
         if ($lastBeat === null) {
-            return CheckResult::skipped($this->key(), 'No scheduler heartbeat wired up — see this check\'s own docblock.');
+            return CheckResult::skipped($this->key(), 'No local scheduler execution recorded yet.');
         }
 
         try {
+            if (! $lastBeat instanceof \DateTimeInterface && (! is_string($lastBeat) || ! preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/', $lastBeat))) {
+                return CheckResult::degraded($this->key(), 'Scheduler heartbeat time is invalid; freshness is unverified.');
+            }
             $heartbeatAt = Carbon::parse($lastBeat)->utc();
         } catch (Throwable) {
             return CheckResult::degraded($this->key(), 'Scheduler heartbeat time is invalid; freshness is unverified.');
         }
 
-        if ($heartbeatAt->gt(now()->utc()->addMinutes(5))) {
+        if ($heartbeatAt->gt(now()->utc())) {
             return CheckResult::degraded($this->key(), 'Scheduler heartbeat is in the future; freshness is unverified.');
         }
         $ageSeconds = max(0, (int) $heartbeatAt->diffInSeconds(now()->utc()));
