@@ -186,7 +186,9 @@ In the host's `config/scale-monitor.php`, explicitly select disks actually used:
 ```
 
 Supported provider labels are `local`, `amazon_s3`, `supabase`,
-`digitalocean_spaces`, `s3_compatible` and `unknown`. Disk names must contain
+`digitalocean_spaces`, `s3_compatible`, `unknown` and `auto`. Auto labels local
+drivers and recognized provider endpoint domains; absent S3 endpoints stay
+unknown, and unrecognized endpoints are S3 compatible. Disk names must contain
 1–24 letters, digits, underscores or hyphens. Keys such as `storage_supabase_s3`
 identify both provider and disk without exposing bucket names or endpoints.
 Do not label every S3 driver as Amazon: confirm the actual provider first.

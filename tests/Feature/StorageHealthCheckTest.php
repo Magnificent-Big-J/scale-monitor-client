@@ -76,6 +76,24 @@ class StorageHealthCheckTest extends TestCase
         $this->assertSame('skipped', (new StorageHealthCheck('absent', 'amazon_s3'))->run()->status);
         config(['filesystems.disks.remote' => ['driver' => 'custom']]);
         $this->assertSame('skipped', (new StorageHealthCheck('remote', 'unknown'))->run()->status);
+        config(['filesystems.disks.readonly' => ['driver' => 'local', 'read-only' => true]]);
+        $this->assertSame('skipped', (new StorageHealthCheck('readonly', 'local'))->run()->status);
+        config(['filesystems.disks.empty' => ['driver' => 's3']]);
+        $this->assertSame('skipped', (new StorageHealthCheck('empty', 'amazon_s3'))->run()->status);
+    }
+
+    public function test_auto_provider_uses_verified_endpoint_domains_and_never_guesses_from_aws_variable_names(): void
+    {
+        foreach ([
+            'https://project.storage.supabase.co/storage/v1/s3' => 'supabase',
+            'https://nyc3.digitaloceanspaces.com' => 'digitalocean_spaces',
+            'https://s3.eu-west-1.amazonaws.com' => 'amazon_s3',
+            'https://example.supabase.co.attacker.test' => 's3_compatible',
+            '' => 'unknown',
+        ] as $endpoint => $provider) {
+            config(['filesystems.disks.s3' => ['driver' => 's3', 'endpoint' => $endpoint]]);
+            $this->assertSame('storage_'.$provider.'_s3', (new StorageHealthCheck('s3', 'auto'))->key());
+        }
     }
 
     public function test_named_default_replaces_generic_probe_and_secondary_disks_are_registered(): void

@@ -62,7 +62,7 @@ return [
     ],
 
     // Explicitly list only disks actually used. Provider values: local,
-    // amazon_s3, supabase, digitalocean_spaces, s3_compatible, unknown.
+    // amazon_s3, supabase, digitalocean_spaces, s3_compatible, unknown, auto.
     // Example: ['s3' => 'supabase', 'public' => 'local'].
     // A named default disk replaces the generic default check; other defaults
     // remain checked. Empty configuration retains the legacy storage check.

@@ -19,10 +19,34 @@ class StorageHealthCheck implements HealthCheck
         if ($this->diskName === null) {
             return 'storage';
         }
-        $provider = in_array($this->provider, self::PROVIDERS, true) ? $this->provider : 'unknown';
+        $provider = $this->providerLabel();
         $disk = preg_match('/^[a-zA-Z0-9_-]{1,24}$/', $this->diskName) ? $this->diskName : 'invalid';
 
         return 'storage_'.$provider.'_'.$disk;
+    }
+
+    private function providerLabel(): string
+    {
+        if ($this->provider !== 'auto') {
+            return in_array($this->provider, self::PROVIDERS, true) ? $this->provider : 'unknown';
+        }
+        $config = config('filesystems.disks.'.$this->diskName, []);
+        if (($config['driver'] ?? null) === 'local') {
+            return 'local';
+        }
+        $host = strtolower((string) parse_url($config['endpoint'] ?? '', PHP_URL_HOST));
+        if (str_ends_with($host, '.supabase.co') || str_ends_with($host, '.supabase.in')) {
+            return 'supabase';
+        }
+        if (str_ends_with($host, '.digitaloceanspaces.com')) {
+            return 'digitalocean_spaces';
+        }
+        if (str_ends_with($host, '.amazonaws.com') || str_ends_with($host, '.amazonaws.com.cn')) {
+            return 'amazon_s3';
+        }
+
+        // An S3 driver or AWS-named credentials alone do not establish provider ownership.
+        return ($config['driver'] ?? null) === 's3' && $host !== '' ? 's3_compatible' : 'unknown';
     }
 
     public function run(): CheckResult
