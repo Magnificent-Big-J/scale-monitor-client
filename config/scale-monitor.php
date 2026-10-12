@@ -54,6 +54,22 @@ return [
     // Read-only runtime/queue evidence accompanies scheduler heartbeats.
     'runtime_metadata' => (bool) env('SCALE_MONITOR_RUNTIME_METADATA', true),
 
+    // A local callback runs with the real schedule, independently of telemetry
+    // workers/delivery. No manual heartbeat command refreshes this evidence.
+    // Use a persistent cache shared by cron and the signed health endpoint.
+    'scheduler' => [
+        'measure' => (bool) env('SCALE_MONITOR_MEASURE_SCHEDULER', true),
+    ],
+
+    // Explicitly list only disks actually used. Provider values: local,
+    // amazon_s3, supabase, digitalocean_spaces, s3_compatible, unknown, auto.
+    // Example: ['s3' => 'supabase', 'public' => 'local'].
+    // A named default disk replaces the generic default check; other defaults
+    // remain checked. Empty configuration retains the legacy storage check.
+    'storage' => [
+        'disks' => [],
+    ],
+
     // Keys stripped (case-insensitively, at any depth) from every outbound
     // context/message payload before it ever leaves this app — a defence-in-
     // depth backstop, not a replacement for not passing secrets in the first

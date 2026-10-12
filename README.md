@@ -163,3 +163,45 @@ differences. Old heartbeat evidence becomes critical; malformed or excessively
 future timestamps report degraded, and missing evidence stays skipped. PHP and
 Laravel support requirements are unchanged. The route above belongs in Laravel's
 `routes/api.php`, which already adds the `/api` prefix.
+
+### Local scheduler measurement and named storage checks (1.3.0)
+
+When monitoring is enabled, the package adds a local callback to Laravel's real
+schedule every minute. It stores `scale-monitor:scheduler:last-run` indefinitely,
+so a stopped cron retains stale evidence (critical after 180 seconds). Cron and
+the health endpoint must share a persistent cache. Missing evidence stays skipped;
+invalid/future evidence is degraded, and cache-read failure is critical. Local
+measurement is independent of heartbeat queue/delivery, and running the heartbeat
+command manually does not refresh it. The existing host heartbeat schedule still
+sends telemetry; this callback sends nothing. Set
+`SCALE_MONITOR_MEASURE_SCHEDULER=false` to opt out. Shadow mode adds no schedule.
+This measures callback execution, not successful completion of business jobs.
+
+In the host's `config/scale-monitor.php`, explicitly select disks actually used:
+
+```php
+'storage' => [
+    'disks' => ['s3' => 'supabase', 'public' => 'local'],
+],
+```
+
+Supported provider labels are `local`, `amazon_s3`, `supabase`,
+`digitalocean_spaces`, `s3_compatible`, `unknown` and `auto`. Auto labels local
+drivers and recognized provider endpoint domains; absent S3 endpoints stay
+unknown, and unrecognized endpoints are S3 compatible. Disk names must contain
+1–24 letters, digits, underscores or hyphens. Keys such as `storage_supabase_s3`
+identify both provider and disk without exposing bucket names or endpoints.
+Do not label every S3 driver as Amazon: confirm the actual provider first.
+A named default replaces the generic `storage` check; an unlisted default keeps
+its legacy check. Other configured disks are never automatically probed.
+
+Each selected writable local/S3 disk gets a unique temporary object beneath
+`.scale-monitor/probes/`, followed by read verification and deletion, including
+cleanup after exceptions. Grant write/read/delete only in this reserved prefix;
+no customer objects are read or deleted. S3 requests use a separate adapter,
+2-second connect and 3-second request timeouts, with retries disabled. This bounds
+each request, not the whole three-operation probe. Missing buckets/disks,
+unsupported drivers and explicitly read-only disks remain skipped. Write, read,
+connection and cleanup failures are critical until a subsequent probe succeeds.
+The host's disk adapter/configuration is unchanged. These probes verify storage
+access, not provider-wide AWS/CloudWatch or Supabase service coverage.

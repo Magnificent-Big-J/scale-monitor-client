@@ -36,4 +36,12 @@ class SchedulerHealthCheckTest extends TestCase
         Cache::forget('scale-monitor:scheduler:heartbeat');
         $this->assertSame('skipped', (new SchedulerHealthCheck)->run()->status);
     }
+
+    public function test_empty_relative_numeric_and_slightly_future_evidence_never_becomes_healthy(): void
+    {
+        foreach (['', 'now', 0, false, [], now()->addSecond()->toIso8601String()] as $invalid) {
+            Cache::put('scale-monitor:scheduler:heartbeat', $invalid);
+            $this->assertSame('degraded', (new SchedulerHealthCheck)->run()->status);
+        }
+    }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.0 — 2026-10-12
+
+- Register an enabled-only local scheduler callback every minute. Its persistent UTC marker records actual schedule execution independently of queued telemetry; manual heartbeats do not refresh it. Stopped cron remains critical until real execution recovers. Legacy markers remain supported; missing, invalid, future and cache-failure evidence retain their distinct states.
+- Add explicitly named storage disk checks labelled by provider (local, Amazon S3, Supabase or DigitalOcean Spaces). Only configured, selected disks are probed; a named default replaces the generic check.
+- Probe reserved unique objects with verified write/read/delete results, cleanup after failures, latency, isolated S3 connect/request timeouts and disabled transport retries. Missing, unsupported and read-only disks stay unmeasured; failed cleanup is critical.
+- Keep telemetry contracts and PHP/Laravel requirements unchanged.
+
 ## v1.2.1 — 2026-10-11
 
 - Correct scheduler heartbeat age when Carbon returns signed date differences: stale evidence now reports critical instead of a negative healthy age.

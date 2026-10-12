@@ -2,6 +2,7 @@
 
 namespace Rainwaves\ScaleMonitorClient;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use Rainwaves\ScaleMonitorClient\Console\Commands\DeploymentCommand;
@@ -16,6 +17,7 @@ use Rainwaves\ScaleMonitorClient\HealthChecks\SchedulerHealthCheck;
 use Rainwaves\ScaleMonitorClient\HealthChecks\StorageHealthCheck;
 use Rainwaves\ScaleMonitorClient\Http\Middleware\VerifyScaleMonitorSignature;
 use Rainwaves\ScaleMonitorClient\Support\HealthCheckRegistry;
+use Rainwaves\ScaleMonitorClient\Support\SchedulerMeasurement;
 
 class ScaleMonitorServiceProvider extends ServiceProvider
 {
@@ -32,12 +34,23 @@ class ScaleMonitorServiceProvider extends ServiceProvider
                 DatabaseHealthCheck::class,
                 CacheHealthCheck::class,
                 QueueHealthCheck::class,
-                StorageHealthCheck::class,
                 SchedulerHealthCheck::class,
                 MailConfigHealthCheck::class,
                 RequiredEnvHealthCheck::class,
             ] as $check) {
                 $registry->registerCheck($this->app->make($check));
+            }
+
+            $disks = config('scale-monitor.storage.disks', []);
+            if (! is_array($disks) || $disks === []) {
+                $registry->registerCheck(new StorageHealthCheck);
+            } else {
+                foreach ($disks as $disk => $provider) {
+                    $registry->registerCheck(new StorageHealthCheck((string) $disk, is_string($provider) ? $provider : 'unknown'));
+                }
+                if (! array_key_exists(config('filesystems.default'), $disks)) {
+                    $registry->registerCheck(new StorageHealthCheck);
+                }
             }
 
             return $registry;
@@ -58,6 +71,13 @@ class ScaleMonitorServiceProvider extends ServiceProvider
                 HeartbeatCommand::class,
                 DeploymentCommand::class,
             ]);
+
+            if (config('scale-monitor.enabled') && config('scale-monitor.scheduler.measure', true)) {
+                $this->app->afterResolving(Schedule::class, function (Schedule $schedule): void {
+                    $schedule->call(fn () => $this->app->make(SchedulerMeasurement::class)->record())
+                        ->name('scale-monitor:measure-scheduler')->everyMinute();
+                });
+            }
         }
     }
 }
