@@ -27,7 +27,8 @@
         "illuminate/queue": "^12.0|^13.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^10.0 || ^11.0"
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "league/flysystem-aws-s3-v3": "^3.0"
     },
     "extra": {
         "laravel": {
