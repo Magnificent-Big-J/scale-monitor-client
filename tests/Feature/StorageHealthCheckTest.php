@@ -89,11 +89,88 @@ class StorageHealthCheckTest extends TestCase
             'https://nyc3.digitaloceanspaces.com' => 'digitalocean_spaces',
             'https://s3.eu-west-1.amazonaws.com' => 'amazon_s3',
             'https://example.supabase.co.attacker.test' => 's3_compatible',
-            '' => 'unknown',
         ] as $endpoint => $provider) {
             config(['filesystems.disks.s3' => ['driver' => 's3', 'endpoint' => $endpoint]]);
             $this->assertSame('storage_'.$provider.'_s3', (new StorageHealthCheck('s3', 'auto'))->key());
         }
+    }
+
+    public function test_auto_provider_resolves_default_aws_endpoints_without_requests_or_credentials(): void
+    {
+        foreach (['eu-west-1', 'us-east-1', 'cn-north-1'] as $region) {
+            config(['filesystems.disks.s3' => $this->s3Config($region) + [
+                'endpoint' => null,
+                'ignore_configured_endpoint_urls' => true,
+            ]]);
+            Storage::forgetDisk('s3');
+
+            $this->assertSame('storage_amazon_s3_s3', (new StorageHealthCheck('s3', 'auto'))->key());
+        }
+    }
+
+    public function test_auto_provider_honours_sdk_level_custom_endpoint_override(): void
+    {
+        $previous = getenv('AWS_ENDPOINT_URL_S3');
+        try {
+            foreach ([
+                'https://project.storage.supabase.co/storage/v1/s3' => 'supabase',
+                'https://nyc3.digitaloceanspaces.com' => 'digitalocean_spaces',
+                'https://storage.example.test' => 's3_compatible',
+                'https://s3.amazonaws.com.attacker.test' => 's3_compatible',
+            ] as $endpoint => $provider) {
+                putenv('AWS_ENDPOINT_URL_S3='.$endpoint);
+                config(['filesystems.disks.s3' => $this->s3Config('eu-west-1') + [
+                    'url' => 'https://public.s3.eu-west-1.amazonaws.com',
+                    'ignore_configured_endpoint_urls' => false,
+                ]]);
+                Storage::forgetDisk('s3');
+
+                $this->assertSame('storage_'.$provider.'_s3', (new StorageHealthCheck('s3', 'auto'))->key());
+            }
+        } finally {
+            putenv($previous === false ? 'AWS_ENDPOINT_URL_S3' : 'AWS_ENDPOINT_URL_S3='.$previous);
+            Storage::forgetDisk('s3');
+        }
+    }
+
+    public function test_auto_provider_resolution_failure_remains_unknown_and_does_not_mask_probe_failure(): void
+    {
+        config(['filesystems.disks.s3' => ['driver' => 's3', 'bucket' => 'test-only']]);
+        Storage::shouldReceive('disk')->with('s3')->andThrow(new \RuntimeException('private endpoint and credentials'));
+        Storage::shouldReceive('build')->once()->andThrow(new \RuntimeException('private endpoint and credentials'));
+
+        $check = new StorageHealthCheck('s3', 'auto');
+        $this->assertSame('storage_unknown_s3', $check->key());
+        $result = $check->run();
+        $this->assertSame('storage_unknown_s3', $result->key);
+        $this->assertSame('critical', $result->status);
+        $this->assertSame('Storage write/read/delete probe failed.', $result->summary);
+    }
+
+    public function test_auto_provider_does_not_infer_from_public_url_or_unsupported_driver(): void
+    {
+        config(['filesystems.disks.s3' => [
+            'driver' => 'custom',
+            'endpoint' => 'https://s3.eu-west-1.amazonaws.com',
+            'url' => 'https://public.s3.eu-west-1.amazonaws.com',
+        ]]);
+        Storage::shouldReceive('disk')->never();
+        $this->assertSame('storage_unknown_s3', (new StorageHealthCheck('s3', 'auto'))->key());
+    }
+
+    private function s3Config(string $region): array
+    {
+        return [
+            'driver' => 's3',
+            'bucket' => 'test-only',
+            'region' => $region,
+            'credentials' => static function (): never {
+                throw new \RuntimeException('Provider identification must not resolve credentials.');
+            },
+            'http_handler' => static function (): never {
+                throw new \RuntimeException('Provider identification must not make a request.');
+            },
+        ];
     }
 
     public function test_named_default_replaces_generic_probe_and_secondary_disks_are_registered(): void

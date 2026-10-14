@@ -2,6 +2,7 @@
 
 namespace Rainwaves\ScaleMonitorClient\HealthChecks;
 
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Rainwaves\ScaleMonitorClient\Contracts\HealthCheck;
@@ -34,7 +35,23 @@ class StorageHealthCheck implements HealthCheck
         if (($config['driver'] ?? null) === 'local') {
             return 'local';
         }
+        if (($config['driver'] ?? null) !== 's3') {
+            return 'unknown';
+        }
         $host = strtolower((string) parse_url($config['endpoint'] ?? '', PHP_URL_HOST));
+        if (($config['endpoint'] ?? '') === '') {
+            try {
+                // Laravel's S3 client resolves default AWS endpoints and SDK-level overrides.
+                // Reading its endpoint does not make a storage request or resolve credentials.
+                $disk = Storage::disk($this->diskName);
+                if ($disk instanceof AwsS3V3Adapter) {
+                    $host = strtolower((string) parse_url((string) $disk->getClient()->getEndpoint(), PHP_URL_HOST));
+                }
+            } catch (Throwable) {
+                // Identification must remain fail-open independently of the storage probe.
+                return 'unknown';
+            }
+        }
         if (str_ends_with($host, '.supabase.co') || str_ends_with($host, '.supabase.in')) {
             return 'supabase';
         }
@@ -46,7 +63,7 @@ class StorageHealthCheck implements HealthCheck
         }
 
         // An S3 driver or AWS-named credentials alone do not establish provider ownership.
-        return ($config['driver'] ?? null) === 's3' && $host !== '' ? 's3_compatible' : 'unknown';
+        return $host !== '' ? 's3_compatible' : 'unknown';
     }
 
     public function run(): CheckResult
