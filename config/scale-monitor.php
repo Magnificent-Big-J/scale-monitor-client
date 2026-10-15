@@ -57,6 +57,14 @@ return [
     // A local callback runs with the real schedule, independently of telemetry
     // workers/delivery. No manual heartbeat command refreshes this evidence.
     // Use a persistent cache shared by cron and the signed health endpoint.
+    // Signed GET /api/monitoring/v1/dependencies, which lets Scale Monitor check
+    // this deployment's composer.lock/package-lock.json against published
+    // security advisories. Returns only package names, versions and lock
+    // digests, and only to a request signed with this environment's secret.
+    'dependencies' => [
+        'route' => (bool) env('SCALE_MONITOR_DEPENDENCIES_ROUTE', true),
+    ],
+
     'scheduler' => [
         'measure' => (bool) env('SCALE_MONITOR_MEASURE_SCHEDULER', true),
     ],
