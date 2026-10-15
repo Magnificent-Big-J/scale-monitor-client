@@ -110,6 +110,14 @@ app(HealthCheckRegistry::class)->registerCheck('google_maps', function () {
 });
 ```
 
+## Dependency vulnerability checks (automatic)
+
+From v1.4.0 the package registers a signed `GET /api/monitoring/v1/dependencies` route. Scale
+Monitor pulls it daily, signed with this environment's credential, and checks the deployed
+`composer.lock` / `package-lock.json` versions against Packagist and npm security advisories.
+It only ever returns package names, versions, dev flags and lock-file digests. Nothing to
+configure; set `SCALE_MONITOR_DEPENDENCIES_ROUTE=false` to turn it off.
+
 ## Configuration reference
 
 See [`config/scale-monitor.php`](config/scale-monitor.php) — every key is documented inline:

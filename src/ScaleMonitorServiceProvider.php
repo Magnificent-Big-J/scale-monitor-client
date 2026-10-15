@@ -15,6 +15,7 @@ use Rainwaves\ScaleMonitorClient\HealthChecks\QueueHealthCheck;
 use Rainwaves\ScaleMonitorClient\HealthChecks\RequiredEnvHealthCheck;
 use Rainwaves\ScaleMonitorClient\HealthChecks\SchedulerHealthCheck;
 use Rainwaves\ScaleMonitorClient\HealthChecks\StorageHealthCheck;
+use Rainwaves\ScaleMonitorClient\Http\Controllers\DependenciesController;
 use Rainwaves\ScaleMonitorClient\Http\Middleware\VerifyScaleMonitorSignature;
 use Rainwaves\ScaleMonitorClient\Support\HealthCheckRegistry;
 use Rainwaves\ScaleMonitorClient\Support\SchedulerMeasurement;
@@ -64,6 +65,14 @@ class ScaleMonitorServiceProvider extends ServiceProvider
         ], 'scale-monitor-config');
 
         $router->aliasMiddleware('scale-monitor.signature', VerifyScaleMonitorSignature::class);
+
+        // Signed pull for Scale Monitor's dependency vulnerability checks. Registered
+        // here (unlike the health route) so upgrading the package is enough.
+        if (config('scale-monitor.dependencies.route', true) && ! $this->app->routesAreCached()) {
+            $router->get('api/monitoring/v1/dependencies', DependenciesController::class)
+                ->middleware('scale-monitor.signature')
+                ->name('scale-monitor.dependencies');
+        }
 
         if ($this->app->runningInConsole()) {
             $this->commands([

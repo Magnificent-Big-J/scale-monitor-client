@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.0 — 2026-10-15
+
+- Add a signed `GET /api/monitoring/v1/dependencies` endpoint, registered automatically behind `scale-monitor.signature`. It returns the deployed release's locked Composer and npm package versions (with development packages flagged) and a SHA-256 of each lock file, so Scale Monitor can check them against published security advisories. No network calls, no file contents beyond names, versions and digests.
+- A missing or unreadable lock file is reported as absent (`null`), never as an empty package list.
+- Disable the route with `SCALE_MONITOR_DEPENDENCIES_ROUTE=false`. Existing telemetry, health and configuration contracts are unchanged.
+
 ## v1.3.1 — 2026-10-15
 
 - Identify S3 providers from the endpoint resolved by Laravel's AWS client when no disk endpoint is explicitly configured. Default AWS endpoints identify Amazon S3; recognized SDK endpoint overrides preserve Supabase and DigitalOcean Spaces identification.
