@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.1 — 2026-10-15
+
+- Identify S3 providers from the endpoint resolved by Laravel's AWS client when no disk endpoint is explicitly configured. Default AWS endpoints identify Amazon S3; recognized SDK endpoint overrides preserve Supabase and DigitalOcean Spaces identification.
+- Keep unrecognized endpoints and unsupported adapters unverified. Public URLs, disk names and credential variable names do not establish provider identity.
+- Endpoint inspection performs no storage request and does not resolve credentials. Measured write/read/delete health remains independent of provider identification; consumer requirements and telemetry contracts are unchanged.
+
 ## v1.3.0 — 2026-10-12
 
 - Register an enabled-only local scheduler callback every minute. Its persistent UTC marker records actual schedule execution independently of queued telemetry; manual heartbeats do not refresh it. Stopped cron remains critical until real execution recovers. Legacy markers remain supported; missing, invalid, future and cache-failure evidence retain their distinct states.
