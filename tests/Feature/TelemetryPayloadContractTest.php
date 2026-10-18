@@ -50,7 +50,7 @@ class TelemetryPayloadContractTest extends TestCase
     {
         Http::fake(['monitor.test/*' => Http::response([], 202)]);
         app(ScaleMonitor::class)->error('low', 'RuntimeException', '0', '0');
-        Http::assertSent(fn (Request $request) => $request['severity'] === 'info' && $request['message'] === '0' && $request['error_code'] === '0');
+        Http::assertSent(fn (Request $request) => $request['severity'] === 'info' && $request['message'] === 'Application exception reported; inspect application logs.' && $request['error_code'] === '0');
     }
 
     public function test_default_metric_observation_time_survives_queue_delay(): void

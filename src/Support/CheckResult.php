@@ -41,15 +41,15 @@ final class CheckResult
     public function toArray(): array
     {
         return array_filter([
-            'key' => $this->key,
+            'key' => Redactor::scrub($this->key),
             'status' => $this->status,
             'latency_ms' => $this->latencyMs,
             // 05 §4.2's own cap — never include hosts/paths/SQL/secrets in a
-            // summary; that's the caller's own responsibility, this class
-            // only enforces the length.
-            'summary' => $this->summary !== null ? mb_substr($this->summary, 0, 300) : null,
+            // summary. This backstop recognises common secret patterns, not
+            // arbitrary personal text; callers still supply safe summaries.
+            'summary' => $this->summary !== null ? mb_substr(Redactor::scrub($this->summary), 0, 300) : null,
             'severity_hint' => $this->severityHint,
-            'error_code' => $this->errorCode,
+            'error_code' => $this->errorCode !== null ? Redactor::scrub($this->errorCode) : null,
         ], fn ($value) => $value !== null);
     }
 }

@@ -73,7 +73,7 @@ class HealthCheckRegistry
             } catch (Throwable $e) {
                 // A broken check (app-specific or built-in) must never take
                 // down the rest of the payload or the route itself.
-                return CheckResult::critical($check->key(), 'Health check threw: '.$e->getMessage());
+                return CheckResult::critical($check->key(), 'Health check failed; inspect application logs.', errorCode: 'HEALTH_CHECK_EXCEPTION');
             }
         }, array_values($this->checks));
 
@@ -81,7 +81,7 @@ class HealthCheckRegistry
             try {
                 array_push($results, ...$runner());
             } catch (Throwable $e) {
-                $results[] = CheckResult::critical($groupKey, 'Health check group threw: '.$e->getMessage());
+                $results[] = CheckResult::critical($groupKey, 'Health check group failed; inspect application logs.', errorCode: 'HEALTH_GROUP_EXCEPTION');
             }
         }
 

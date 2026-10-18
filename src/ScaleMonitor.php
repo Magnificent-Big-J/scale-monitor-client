@@ -2,8 +2,8 @@
 
 namespace Rainwaves\ScaleMonitorClient;
 
-use Illuminate\Support\Facades\Log;
 use Rainwaves\ScaleMonitorClient\Jobs\PushScaleMonitorTelemetry;
+use Rainwaves\ScaleMonitorClient\Support\DeliveryStatus;
 use Rainwaves\ScaleMonitorClient\Support\Redactor;
 use Rainwaves\ScaleMonitorClient\Support\RuntimeSnapshot;
 use Throwable;
@@ -90,9 +90,9 @@ class ScaleMonitor
     public function event(string $name, string $severity = 'info', array $context = [], ?string $fingerprint = null, ?string $message = null): void
     {
         $this->push('custom-event', array_filter([
-            'kind' => mb_substr($name, 0, 64),
-            'title' => mb_substr($name, 0, 191),
-            'message' => mb_substr($message ?? $name, 0, 2000),
+            'kind' => mb_substr(Redactor::scrub($name), 0, 64),
+            'title' => mb_substr(Redactor::scrub($name), 0, 191),
+            'message' => Redactor::scrub($message ?? $name),
             'severity' => $severity === 'low' ? 'info' : $severity,
             'context' => $context !== [] ? $this->redact($context) : null,
             'fingerprint' => $fingerprint,
@@ -122,14 +122,18 @@ class ScaleMonitor
                 'notes' => $notes,
             ], static fn ($value) => $value !== null));
         } catch (Throwable $e) {
-            Log::debug('Unable to send Scale Monitor deployment marker', ['error' => $e->getMessage()]);
+            app(DeliveryStatus::class)->record('dispatch_failed', 'dispatch_unavailable', 'deployment');
         }
     }
 
     /** @param  array<string, mixed>  $context */
     private function redact(array $context): array
     {
-        return Redactor::redact($context, config('scale-monitor.redaction', []));
+        try {
+            return Redactor::redact($context, (array) config('scale-monitor.redaction', []));
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /** @param  array<string, mixed>  $payload */
@@ -145,10 +149,7 @@ class ScaleMonitor
             // Dispatch itself can throw if the queue connection is down
             // (e.g. a `database` queue driver with the DB unreachable) --
             // never let that propagate into the caller.
-            Log::debug('Unable to queue Scale Monitor telemetry push', [
-                'endpoint' => $endpoint,
-                'error' => $e->getMessage(),
-            ]);
+            app(DeliveryStatus::class)->record('dispatch_failed', 'dispatch_unavailable', $endpoint);
         }
     }
 }
