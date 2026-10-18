@@ -5,6 +5,7 @@ namespace Rainwaves\ScaleMonitorClient;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Rainwaves\ScaleMonitorClient\Console\Commands\DeliveryStatusCommand;
 use Rainwaves\ScaleMonitorClient\Console\Commands\DeploymentCommand;
 use Rainwaves\ScaleMonitorClient\Console\Commands\HeartbeatCommand;
 use Rainwaves\ScaleMonitorClient\Console\Commands\PingCommand;
@@ -77,6 +78,7 @@ class ScaleMonitorServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 PingCommand::class,
+                DeliveryStatusCommand::class,
                 HeartbeatCommand::class,
                 DeploymentCommand::class,
             ]);

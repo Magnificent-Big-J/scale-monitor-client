@@ -122,7 +122,7 @@ configure; set `SCALE_MONITOR_DEPENDENCIES_ROUTE=false` to turn it off.
 
 See [`config/scale-monitor.php`](config/scale-monitor.php) — every key is documented inline:
 `enabled`, `base_url`, `key_id`/`secret`, `application`/`environment`, `timeouts`, `retries`,
-`queue`, `redaction` (keys stripped from outbound payloads at any depth), `report_exceptions`
+`queue`, `redaction` (additional keys masked in outbound diagnostic payloads), `report_exceptions`
 (`min_severity`, `sampling`), `heartbeats.queues`.
 
 ## Testing
@@ -217,3 +217,66 @@ unsupported drivers and explicitly read-only disks remain skipped. Write, read,
 connection and cleanup failures are critical until a subsequent probe succeeds.
 The host's disk adapter/configuration is unchanged. These probes verify storage
 access, not provider-wide AWS/CloudWatch or Supabase service coverage.
+
+
+## Delivery reliability and safe diagnostics (R04/R06)
+
+An actual asynchronous queue worker makes at most `1 + retries` attempts (default
+three total; hard maximum six). Connection failures/timeouts, HTTP 408/425/429 and
+5xx can release the same job with jittered backoff. Each delay, including
+`Retry-After`, is capped at 60 seconds. Event ID, original occurrence time and body
+stay stable; request timestamp, nonce and HMAC are regenerated per attempt. Only
+HTTP 202 is counted as receiver acceptance. Redirects and other statuses, including
+401/403/422, are terminal. Response bodies and transport exception text are omitted
+from delivery logs and local outcomes.
+
+`sync`, `dispatchSync`, direct invocation and deployment markers make one HTTP
+attempt, with no sleep/retry loop or propagated transport failure. Total request
+timeout remains three seconds by default (connect two); configured totals are
+bounded to 0.1–10 seconds and connect timeout cannot exceed total. A broken dispatch
+queue still fails open. Retry exhaustion finishes the monitoring job with safe
+local evidence rather than emitting a new failed-job alert about itself. Jobs lost
+from the host queue before execution are not recovered by this SDK.
+
+Read local delivery evidence without sending anything:
+
+```bash
+php artisan scale-monitor:delivery-status
+```
+
+The bounded JSON file defaults to `storage/app/scale-monitor/delivery.json` (0700
+new directory, 0600 file); override with `SCALE_MONITOR_DELIVERY_STATE_PATH`, or set
+an empty path to disable it. Use a persistent location shared by the workers and
+operator CLI. It contains counts by outcome, last success time, last rejection
+category, endpoint type, attempt/status and a SHA-256 event reference, without
+bodies, addresses, URLs, request signatures, credentials or exception text. Writes
+are best-effort and use a nonblocking lock; contention, crashes or disk failures
+can lose local updates. This is observational evidence, not an outbox, exact
+accounting, a freshness check or proof of receiver processing/inbox delivery.
+`not_recorded`, `unavailable` and `disabled` are explicit; `recorded` alone does
+not establish current health. Retain this small file across source rollbacks.
+
+Before serialization into the host queue, sensitive context keys are masked and
+recognisable bearer/JWT text, URI credentials, credential assignments and emails
+are scrubbed. SQL diagnostic strings are replaced wholesale. Uncontrolled maps
+are limited to eight levels, 128 entries per level and 2,000 characters per string;
+objects/resources are masked rather than serialized. Built-in sensitive keys
+cannot be disabled; configured `redaction` keys add to them. Legacy queued jobs
+are sanitised again before transmission, but upgrading does not rewrite old
+queue, failed-job or application-log contents.
+
+Exception and failed-job messages now use fixed summaries directing operators
+to application logs. Their API arguments remain accepted; error grouping retains
+a one-way fingerprint using the receiver's historical normalization. Error class,
+error code, event identity and safe operational context remain available. Custom
+health-check/group exceptions use fixed summaries/codes; intentionally supplied
+custom summaries and event text are scrubbed before truncation. Regexes cannot
+identify arbitrary personal data: pass only necessary operational data and never
+raw SQL, request bodies, documents or personal records. Receiver R06 independently
+minimises payloads before encrypted receipt storage and uses fixed exception
+summaries even for old clients.
+
+Release order: deploy the receiver R06 acceptance boundary first, then merge/tag
+this SDK through the normal release process and use reviewed consumer lockfile
+PRs, staging first. Do not change credentials, recipients or notification targets
+to demonstrate retries. All acceptance failures use isolated local receivers.

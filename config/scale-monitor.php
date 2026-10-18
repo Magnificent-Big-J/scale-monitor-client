@@ -44,10 +44,16 @@ return [
         'total' => 3,
     ],
 
-    // Exponential backoff, then drop — never a caller-blocking retry loop.
-    // Applied by the queued job, not at dispatch time, so a Scale Monitor
-    // outage never blocks the caller.
+    // Additional attempts for actual asynchronous jobs, clamped to 0–5.
+    // Backoff has jitter and a 60-second per-delay cap, including Retry-After.
+    // Sync queues and deployment markers make one bounded attempt.
     'retries' => 2,
+
+    // Safe local outcome counters; no payloads or exception/response contents.
+    // Use a persistent path shared by application workers and CLI. Empty disables.
+    'delivery' => [
+        'state_path' => env('SCALE_MONITOR_DELIVERY_STATE_PATH', storage_path('app/scale-monitor/delivery.json')),
+    ],
 
     'queue' => env('SCALE_MONITOR_QUEUE', 'default'),
 

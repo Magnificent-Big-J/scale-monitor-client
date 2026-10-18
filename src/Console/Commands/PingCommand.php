@@ -51,11 +51,11 @@ class PingCommand extends Command
                 ScaleMonitorSignature::HEADER_NONCE => $nonce,
                 ScaleMonitorSignature::HEADER_SIGNATURE => $signature,
             ])
-                ->timeout(config('scale-monitor.timeouts.total', 3))
+                ->withoutRedirecting()->timeout(config('scale-monitor.timeouts.total', 3))
                 ->connectTimeout(config('scale-monitor.timeouts.connect', 2))
                 ->get($baseUrl.$path);
         } catch (Throwable $e) {
-            $this->error("Could not reach Scale Monitor: {$e->getMessage()}");
+            $this->error('Could not reach Scale Monitor (connection or transport failure).');
 
             return self::FAILURE;
         }
@@ -66,7 +66,7 @@ class PingCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->error("Ping failed ({$response->status()}): {$response->body()}");
+        $this->error("Ping failed ({$response->status()}). Response contents omitted.");
 
         return self::FAILURE;
     }

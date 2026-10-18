@@ -30,6 +30,21 @@ class HealthControllerTest extends TestCase
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
 
+    public function test_exceptions_and_custom_summaries_are_sanitised_before_the_health_response(): void
+    {
+        $registry = app(HealthCheckRegistry::class);
+        $registry->registerCheck('throwing', fn () => throw new RuntimeException('SQLSTATE patient synthetic-person-secret'));
+        $registry->registerCheckGroup('throwing-group', fn () => throw new RuntimeException('mysql://user:synthetic-uri-secret@db/test'));
+        $registry->registerCheck('custom', fn () => CheckResult::critical('custom', 'Bearer synthetic-bearer-secret password="synthetic-string-secret"'));
+        $response = $this->getJson('/health')->assertOk();
+        foreach (['person', 'uri', 'bearer', 'string'] as $part) {
+            $this->assertStringNotContainsString('synthetic-'.$part.'-secret', $response->getContent());
+        }
+        $checks = collect($response->json('checks'));
+        $this->assertSame('HEALTH_CHECK_EXCEPTION', $checks->firstWhere('key', 'throwing')['error_code']);
+        $this->assertSame('HEALTH_GROUP_EXCEPTION', $checks->firstWhere('key', 'throwing-group')['error_code']);
+    }
+
     public function test_the_payload_has_the_documented_shape(): void
     {
         config(['scale-monitor.application' => 'test-app', 'scale-monitor.environment' => 'testing']);
