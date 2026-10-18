@@ -43,4 +43,12 @@ class RedactorTest extends TestCase
 
         $this->assertSame($data, Redactor::redact($data, ['password', 'token']));
     }
+
+    public function test_credential_aliases_are_masked_before_queueing(): void
+    {
+        foreach (['passwd', 'pwd', 'credit_card', 'client_secret', 'private_key', 'secret_access_key', 'aws_secret_access_key', 'api-key', 'access-token'] as $key) {
+            $result = Redactor::redact(['context' => [strtoupper($key) => 'synthetic-secret']], []);
+            $this->assertStringNotContainsString('synthetic-secret', json_encode($result));
+        }
+    }
 }

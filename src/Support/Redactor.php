@@ -20,10 +20,11 @@ class Redactor
         'first_name', 'last_name', 'full_name', 'name', 'document', 'attachment',
         'body', 'bindings', 'args',
         'credit_card',
+        'passwd', 'pwd', 'client_secret', 'private_key', 'secret_access_key', 'aws_secret_access_key', 'api-key', 'access-token',
     ];
 
     private const string CREDENTIAL_ASSIGNMENT = <<<'REGEX'
-~((?:[?&]|\b)(?:password|passwd|pwd|secret|token|access_token|refresh_token|api[_-]?key|cookie)[\x22\x27]?\s*(?::|=>|=)\s*)(?:\[redacted\]|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s&,;}\]]+)~i
+~((?:[?&]|\b)(?:password|passwd|pwd|client[_-]secret|private[_-]key|(?:aws[_-])?secret[_-]access[_-]key|secret|token|access_token|refresh_token|api[_-]?key|cookie)[\x22\x27]?\s*(?::|=>|=)\s*)(?:\[redacted\]|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s&,;}\]]+)~i
 REGEX;
 
     public static function scrub(string $value): string
