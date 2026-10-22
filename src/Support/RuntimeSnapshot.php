@@ -9,7 +9,7 @@ use Throwable;
 /** A small, read-only snapshot. Never includes credentials, paths, process arguments or user data. */
 class RuntimeSnapshot
 {
-    public const string CLIENT_VERSION = '1.3.1';
+    public const string CLIENT_VERSION = '1.5.0';
 
     public function collect(): array
     {
