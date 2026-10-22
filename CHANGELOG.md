@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased — R04 delivery reliability / R06 sender boundaries
+## v1.5.0 — 2026-10-22: R04 delivery reliability, R06 sender boundaries
 
 - Retry transient failures only in real asynchronous workers, with bounded attempts/delays, jitter, stable event identity/body/occurrence and fresh signatures. Keep synchronous sends/deploy markers single-attempt and fail-open; refuse redirects and count only HTTP 202 as acceptance.
 - Add bounded private local outcome counters and a read-only `scale-monitor:delivery-status` command. No exception/response content, bodies, destinations or credentials are retained in this evidence; counters are best-effort, not an outbox or delivery guarantee.
 - Sanitize before queue serialization and transmission, including legacy jobs. Replace exception/failed-job text with safe summaries while preserving historical error grouping. Use safe health-check exception codes and scrub custom text before length limits; omit raw transport/ping error content.
 - Add real database-worker/loopback HTTP 503, 429 and timeout recovery, permanent rejection, redirect and exhaustion checks, plus synthetic-secret boundary regressions. Receiver R06 should deploy before SDK release and reviewed staged consumer upgrades.
+- Report `client_version` 1.5.0 when Composer's installed version is unavailable (the fallback still said 1.3.1 in v1.4.0).
 
 ## v1.4.0 — 2026-10-15
 
